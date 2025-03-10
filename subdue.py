@@ -4,6 +4,8 @@ import argparse
 import sys
 from functools import reduce
 
+import bounded_pq
+
 vals = [94, 86_000_000, 220_000_000, 17, 2_200, 52_000, 10_000_000, 8, 9_700_000, 980_000_000]
 vals.sort()
 
@@ -47,10 +49,8 @@ def all_non_empty_subsets_counter(l):
 def all_non_empty_subsets(l):
     yield from all_non_empty_subsets_counter(l)
 
-class PowerUpSet:
-    def __init__(self, s):
-        self.s = s
-        self.k = reduce(lambda x,y: x*y, s)
+def power_up_tuple(s):
+    return (reduce(lambda x,y: x*y, s), s)
 
 def fmt_add(v):
     return f'+{v:_d}'
@@ -137,13 +137,17 @@ def search(st, fn):
 
     min_ratio = st.vals[0] / st.t
     expand = []
-    for pus in filter(lambda pus: pus.k > min_ratio, [PowerUpSet(ss) for ss in all_non_empty_subsets(st.ops)]):
+    if options.pq <= 1:
+        g = filter(lambda pus: pus[0] > min_ratio, [power_up_tuple(ss) for ss in all_non_empty_subsets(st.ops)])
+    else:
+        g = bounded_pq.bounded_gen(options.pq, filter(lambda pus: pus[0] > min_ratio, [power_up_tuple(ss) for ss in all_non_empty_subsets(st.ops)]))
+    for pus in g:
         if options.verbose > 2:
-            print(f'powerup set: {pus.s}')
-        t = st.t * pus.k
+            print(f'powerup set: {pus[1]}')
+        t = st.t * pus[0]
         nops = st.ops[:]
         nseq = st.seq[:]
-        for o in pus.s:
+        for o in pus[1]:
             nops.remove(o)
             nseq.append(fmt_op(o))
         nst = State(t, st.vals, nops, nseq)
@@ -170,6 +174,8 @@ def main(argv):
     parser.add_argument('--powerups', '-p', nargs='+', type=int,
                         default=list(range(1,11)),
                         help='list of powerups')
+    parser.add_argument('--pq', type=int, default=0,
+                        help='max priority queue for powerup sets (< 1 means no priority queue used)')
     global options
     options = parser.parse_args(argv[1:])
     if options.verbose:
