@@ -172,7 +172,7 @@ def main(argv):
                         default=vals,
                         help='list of animal weights')
     parser.add_argument('--powerups', '-p', nargs='+', type=int,
-                        default=list(range(1,11)),
+                        default=list(range(2,11)),
                         help='list of powerups')
     parser.add_argument('--pq', type=int, default=0,
                         help='max priority queue for powerup sets (< 1 means no priority queue used)')
