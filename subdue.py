@@ -81,10 +81,10 @@ weights:  {pretty_list(st.vals)}
 powerups: {pretty_list(st.ops)}
 '''
 
-def search(st, fn):
+def search(st, succ, fn):
     st = st.greedy()
     if st.done():
-        return st.seq
+        return succ(st.seq)
     if fn is not None:
         fn()
 
@@ -106,9 +106,9 @@ def search(st, fn):
             nops.remove(o)
             nseq.append(fmt_op(o))
         nst = State(t, st.vals, nops, nseq)
-        success = search(nst, fn)
-        if success != None:
-            return success
+        if not search(nst, succ, fn):
+            return False
+    return True  # keep going
 
 class Count:
     def __init__(self):
@@ -117,6 +117,13 @@ class Count:
         self.n = self.n + 1
     def val(self):
         return self.n
+
+class SuccessAccummulator:
+    def __init__(self):
+        self.successes = []
+    def __call__(self, succ):
+        self.successes.append(' '.join(succ))
+        return options.all
 
 def main(argv):
     parser = argparse.ArgumentParser()
@@ -131,6 +138,9 @@ def main(argv):
                         help='list of powerups')
     parser.add_argument('--pq', type=int, default=511,
                         help='max priority queue for powerup sets (< 1 means no priority queue used)')
+    parser.add_argument('--all', action=argparse.BooleanOptionalAction,
+                        default=False,
+                        help='generate all solutions instead of just the first found')
     # There are 9 powerups, so 2**9-1 possible non-empty subsets, and
     # using 511 means we fully sort.
 
@@ -143,9 +153,16 @@ def main(argv):
         print(f'weights: {pretty_list(options.weights)}')
         print(f'powerups: {pretty_list(options.powerups)}')
 
-    c = Count()
     st = State(2, options.weights, options.powerups, list())
-    print(f'solution: {search(st, c)}')
+    acc = SuccessAccummulator()
+    c = Count()
+
+    if search(st, acc, c):
+        print('No solutions found.')
+    else:
+        print('solution(s) found:')
+        for ix,s in enumerate(acc.successes):
+            print(f'{ix:3d}: {s}')
 
     print(f'{c.val()} positions explored')
 
