@@ -12,12 +12,7 @@ vals.sort()
 options = None
 
 def pretty_list(l):
-    s = '['
-    sep = ''
-    for v in l:
-        s = s +f'{sep}{v:_d}'
-        sep = ', '
-    return s + ']'
+    return '[' + ', '.join(f'{v:_d}' for v in l) + ']'
 
 def all_subsets_recursive(l):
     if len(l) == 0:
