@@ -60,15 +60,11 @@ def fmt_op(v):
 
 class State:
     def __init__(self, t, v, o, s):
+        # immutable
         self.t = t
         self.vals = v
         self.ops = o
         self.seq = s
-
-    def transposition_tbl_eq(self, other):
-        # vals and ops are sorted, so no need to do set equality.
-        # we don't care about seq / how we got to this state.
-        return self.t == other.t and self.vals == other.vals and self.ops == other.ops
 
     def greedy(self):
         t = self.t
@@ -78,45 +74,10 @@ class State:
             t = t + self.vals[ix]
             s.append(fmt_add(self.vals[ix]))
             ix = ix + 1
-        return State(t, self.vals[ix:], self.ops[:], s)
+        return State(t, self.vals[ix:], self.ops, s)
 
     def done(self):
         return len(self.vals) == 0
-
-    def score_lower_bound(self):
-        return self.t * reduce(lambda x, y: x*y, self.ops)
-
-    def greedy_lower_bound(self):
-        oix = 0
-        t = self.t
-        for n in v:
-            while t <= n and oix < len(self.ops):
-                t = t * self.ops[oix]
-                oix = oix + 1
-            if t > n:
-                t = t + n
-        while oix < len(self.ops):
-            t = t * self.ops[oix]
-            oix = oix + 1
-
-        return t
-
-    def play_val(self, v):
-        assert v in self.vals
-        assert v < self.t
-        v2 = self.vals[:]
-        v2.remove(v)
-        s2 = self.seq[:]
-        s2.append(fmt_add(v))
-        return State(self.t + v, v2, self.ops, s2)
-
-    def play_op(self, o):
-        assert o in self.ops
-        o2 = self.ops[:]
-        o2.remove(o)
-        s2 = self.seq[:]
-        s2.append(fmt_op(o))
-        return State(self.t, self.vals, o2, s2)
 
 def pretty_state(st):
     return f'''
@@ -136,11 +97,10 @@ def search(st, fn):
         print(f'state: {pretty_state(st)}')
 
     min_ratio = st.vals[0] / st.t
-    expand = []
-    if options.pq <= 1:
-        g = filter(lambda pus: pus[0] > min_ratio, [power_up_tuple(ss) for ss in all_non_empty_subsets(st.ops)])
-    else:
-        g = bounded_pq.bounded_gen(options.pq, filter(lambda pus: pus[0] > min_ratio, [power_up_tuple(ss) for ss in all_non_empty_subsets(st.ops)]))
+    g = filter(lambda pus: pus[0] > min_ratio,
+               [power_up_tuple(ss) for ss in all_non_empty_subsets(st.ops)])
+    if options.pq > 1:
+        g = bounded_pq.bounded_gen(options.pq, g)
     for pus in g:
         if options.verbose > 2:
             print(f'powerup set: {pus[1]}')
@@ -174,16 +134,21 @@ def main(argv):
     parser.add_argument('--powerups', '-p', nargs='+', type=int,
                         default=list(range(2,11)),
                         help='list of powerups')
-    parser.add_argument('--pq', type=int, default=0,
+    parser.add_argument('--pq', type=int, default=511,
                         help='max priority queue for powerup sets (< 1 means no priority queue used)')
+    # There are 9 powerups, so 2**9-1 possible non-empty subsets, and
+    # using 511 means we fully sort.
+
     global options
     options = parser.parse_args(argv[1:])
+
+    options.weights.sort()
+    options.powerups.sort()
     if options.verbose:
         print(f'weights: {pretty_list(options.weights)}')
         print(f'powerups: {pretty_list(options.powerups)}')
+
     c = Count()
-    options.weights.sort()
-    options.powerups.sort()
     st = State(2, options.weights, options.powerups, list())
     print(f'solution: {search(st, c)}')
 
