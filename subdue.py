@@ -157,7 +157,8 @@ def main(argv):
     acc = SuccessAccummulator()
     c = Count()
 
-    if search(st, acc, c):
+    search(st, acc, c)
+    if len(acc.successes) == 0:
         print('No solutions found.')
     else:
         print('solution(s) found:')
